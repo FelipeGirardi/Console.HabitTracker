@@ -1,5 +1,6 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using HabitTracker.FelipeGirardi.Helpers;
 using HabitTracker.FelipeGirardi.Models;
+using Microsoft.Data.Sqlite;
 using System.Globalization;
 
 namespace habit_tracker;
@@ -7,6 +8,7 @@ namespace habit_tracker;
 class Program
 {
     static string connectionString = @"Data Source=habit-Tracker.db";
+    static ValidatorService validatorService = new ValidatorService();
     static void Main(string[] args)
     {
         using(var connection = new SqliteConnection(connectionString))
@@ -14,10 +16,11 @@ class Program
             connection.Open();
             var tableCmd = connection.CreateCommand();
 
-            tableCmd.CommandText = @"CREATE TABLE IF NOT EXISTS drinking_water (
+            tableCmd.CommandText = @"CREATE TABLE IF NOT EXISTS habits (
                                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
                                        Date TEXT,
-                                       Quantity INTEGER
+                                       Quantity INTEGER,
+                                       Measure TEXT
                                        )";
             tableCmd.ExecuteNonQuery();
 
@@ -78,20 +81,21 @@ class Program
             connection.Open();
             var tableCmd = connection.CreateCommand();
 
-            tableCmd.CommandText = @"SELECT * FROM drinking_water";
+            tableCmd.CommandText = @"SELECT * FROM habits";
 
-            List<DrinkingWater> tableData = new();
+            List<Habit> tableData = new();
 
             SqliteDataReader reader = tableCmd.ExecuteReader();
 
             if (reader.HasRows) {
                 while(reader.Read()) {
                     tableData.Add(
-                        new DrinkingWater
+                        new Habit
                         {
                             Id = reader.GetInt32(0),
                             Date = DateTime.ParseExact(reader.GetString(1), "dd-MM-yy", new CultureInfo("en-US")),
-                            Quantity = reader.GetInt32(2)
+                            Quantity = reader.GetInt32(2),
+                            Measure = reader.GetString(3)
                         }
                     );
                 }
@@ -107,7 +111,7 @@ class Program
 
             foreach(var data in tableData)
             {
-                Console.WriteLine($"{data.Id} - {data.Date.ToString("dd-MMM-yyyy")} - Quantity: {data.Quantity}");
+                Console.WriteLine($"{data.Id} - {data.Date.ToString("dd-MMM-yyyy")} - Quantity: {data.Quantity} {data.Measure}");
             }
 
             Console.WriteLine("--------------------------------------\n");
@@ -118,14 +122,16 @@ class Program
     {
         string date = GetDateInput();
 
-        int quantity = GetNumberInput("\n\nPlease insert number of glasses or other measure of your choice (no decimals allowed)\n");
-    
-        using(var connection = new SqliteConnection(connectionString))
+        int quantity = GetNumberInput("\n\nPlease insert number of your choice (no decimals allowed)\n");
+
+        string measure = GetStringInput("\n\nPlease insert unit of measure of your choice (no numbers allowed)");
+
+        using (var connection = new SqliteConnection(connectionString))
         {
             connection.Open();
 
             var tableCmd = connection.CreateCommand();
-            tableCmd.CommandText = $"INSERT INTO drinking_water(date, quantity) VALUES ('{date}', '{quantity}')";
+            tableCmd.CommandText = $"INSERT INTO habits(date, quantity, measure) VALUES ('{date}', '{quantity}', '{measure}')";
             tableCmd.ExecuteNonQuery();
 
             connection.Close();
@@ -138,8 +144,9 @@ class Program
         string? dateInput = Console.ReadLine();
 
         if (dateInput == "0") GetUserInput();
+        if (dateInput == null) GetDateInput();
 
-        while(!DateTime.TryParseExact(dateInput, "dd-MM-yy", new CultureInfo("en-US"), DateTimeStyles.None, out _))
+        while(!validatorService.IsDateValid(dateInput ?? ""))
         {
             Console.WriteLine("\n\nInvalid date (Format: dd-mm-yy). Type 0 to return to the main menu or try again:\n");
             dateInput = Console.ReadLine();
@@ -154,8 +161,9 @@ class Program
         string? numberInput = Console.ReadLine();
 
         if (numberInput == "0") GetUserInput();
+        if (numberInput == null) GetNumberInput("");
 
-        while (!Int32.TryParse(numberInput, out _) || Convert.ToInt32(numberInput) < 0)
+        while (!validatorService.IsNumberValid(numberInput ?? ""))
         {
             Console.WriteLine("\n\nInvalid number. Try again.\n");
             numberInput = Console.ReadLine();
@@ -164,6 +172,22 @@ class Program
         int finalInput = Convert.ToInt32(numberInput);
 
         return finalInput;
+    }
+
+    internal static string GetStringInput(string message)
+    {
+        Console.WriteLine(message);
+        string? stringInput = Console.ReadLine();
+
+        if (stringInput == "0") GetUserInput();
+
+        while (!validatorService.IsStringValid(stringInput ?? ""))
+        {
+            Console.WriteLine("\n\nInvalid measure. Try again.\n");
+            stringInput = Console.ReadLine();
+        }
+
+        return stringInput ?? "";
     }
 
     private static void Delete()
@@ -178,7 +202,7 @@ class Program
             connection.Open();
 
             var tableCmd = connection.CreateCommand();
-            tableCmd.CommandText = $"DELETE FROM drinking_water WHERE Id = '{recordId}'";
+            tableCmd.CommandText = $"DELETE FROM habits WHERE Id = '{recordId}'";
             int rowCount = tableCmd.ExecuteNonQuery();
 
             if (rowCount == 0)
@@ -206,7 +230,7 @@ class Program
             connection.Open();
 
             var checkCmd = connection.CreateCommand();
-            checkCmd.CommandText = $"SELECT EXISTS(SELECT 1 FROM drinking_water WHERE Id = {recordId})";
+            checkCmd.CommandText = $"SELECT EXISTS(SELECT 1 FROM habits WHERE Id = {recordId})";
             int checkQuery = Convert.ToInt32(checkCmd.ExecuteScalar());
 
             if (checkQuery == 0)
@@ -217,10 +241,11 @@ class Program
             }
 
             string date = GetDateInput();
-            int quantity = GetNumberInput("\n\nPlease insert number of glasses or other measure of your choice (no decimals allowed)\n");
+            int quantity = GetNumberInput("\n\nPlease insert number of your choice (no decimals allowed)\n");
+            string measure = GetStringInput("\n\nPlease insert unit of measure of your choice (no numbers allowed)");
 
             var tableCmd = connection.CreateCommand();
-            tableCmd.CommandText = $"UPDATE drinking_water SET Date = '{date}', Quantity='{quantity}' WHERE Id = '{recordId}'";
+            tableCmd.CommandText = $"UPDATE habits SET Date = '{date}', Quantity='{quantity}', Measure='{measure}' WHERE Id = '{recordId}'";
             tableCmd.ExecuteNonQuery();
 
             connection.Close();

@@ -1,7 +1,8 @@
 namespace HabitTracker.FelipeGirardi.Models;
 
-public class DrinkingWater {
+public class Habit {
     public int Id { get; set; }
     public DateTime Date { get; set; }
     public int Quantity { get; set; }
+    public required string Measure {  get; set; }
 }
