@@ -68,7 +68,7 @@ class Program
                     Update();
                     break;
                 default:
-                Console.WriteLine("\nInvalid command. Please type a number from 0 to 4.\n");
+                    Console.WriteLine("\nInvalid command. Please type a number from 0 to 4.\n");
                     break;
             }
         }
@@ -208,7 +208,7 @@ class Program
             if (rowCount == 0)
             {
                 Console.WriteLine($"\n\nRecord with Id {recordId} doesn't exist.");
-                Delete();
+                GetUserInput();
             }
 
             connection.Close();
@@ -237,7 +237,7 @@ class Program
             {
                 Console.WriteLine($"Record with Id {recordId} does not exist.");
                 connection.Close();
-                Update();
+                GetUserInput();
             }
 
             string date = GetDateInput();
